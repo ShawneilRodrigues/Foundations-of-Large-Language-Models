@@ -2,19 +2,20 @@ from __future__ import annotations
 import torch
 import torch.nn as nn
 import torch.nn.functional as F 
+import math
 
 class CasualSelfAttention(nn.Module):
     def __init__(self, n_embd: int, n_head: int, dropout: float = 0.0):
         super().__init__()
         assert n_embd%n_head==0
         self.n_head=n_head
-        self.d_head=n_embd/n_head
+        self.d_head=n_embd//n_head
         self.qkv=nn.Linear(n_embd, 3 * n_embd, bias=False)
         self.proj=nn.Linear(n_embd, n_embd, bias=False)
         self.dropout=nn.Dropout(dropout)
 
     def forward(self, x: torch.Tensor):
-        B,T,C=x.shape(-1)
+        B,T,C=x.shape
         qkv=self.qkv(x).view(B, T, 3, self.n_head, self.d_head)
         q,k,v=qkv.unbind(dim=2)
         q = q.transpose(1, 2)
@@ -43,13 +44,13 @@ class Block(nn.Module):
     def __init__(self, n_embd: int, n_head: int, dropout: float):
         super().__init__()
         self.ln1=nn.LayerNorm(n_embd)
-        self.attn = CausalSelfAttention(n_embd, n_head, dropout)
+        self.attn = CasualSelfAttention(n_embd, n_head, dropout)
         self.ln2 = nn.LayerNorm(n_embd)
         self.ffn = FeedForward(n_embd, mult=4, dropout=dropout)
     
     def forward(self,x):
         x=x+ self.attn(self.ln1(x))
-        x=x+ self.fnn(self.ln2(x))
+        x=x+ self.ffn(self.ln2(x))
         return x
 
 class GPT(nn.Module):
@@ -76,7 +77,7 @@ class GPT(nn.Module):
         B, T = idx.shape
         assert T <= self.block_size
         pos = torch.arange(0, T, device=idx.device).unsqueeze(0)
-        x = self.tok_emb(idx) + self.pos_emb(pos)
+        x = self.tok_embd(idx) + self.pos_emb(pos)
         x = self.drop(x)
         for blk in self.blocks:
             x = blk(x)

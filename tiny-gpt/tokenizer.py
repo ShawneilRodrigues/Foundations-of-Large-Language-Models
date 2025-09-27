@@ -5,7 +5,7 @@ class  ByteTokenizer:
     def encode(self,s: str)-> torch.Tensor:
         return torch.tensor(list(s.encode('utf-8')), dtype=torch.long)
     
-    def decoder(self,ids):
+    def decode(self,ids):
         if isinstance(ids,torch.Tensor):
             ids=ids.tolist()
         return bytes(ids).decode('utf-8', errors='ignore')
